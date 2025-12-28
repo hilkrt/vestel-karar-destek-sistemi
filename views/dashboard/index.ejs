@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vestel Karar Destek Sistemi</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-top">
+                <img src="/images/vestel-logo.png" alt="VESTEL" class="vestel-logo" onerror="this.style.display='none'">
+                <h1>Vestel Karar Destek Sistemi</h1>
+            </div>
+            <nav>
+                <a href="/" class="active">Dashboard</a>
+                <a href="/departments">Departmanlar</a>
+                <a href="/what-to-do">Ne Yapılmalı</a>
+                <a href="/anomalies">Anormallikler</a>
+                <a href="/suggestions">Öneriler</a>
+                <a href="/scenarios">Senaryo Analizi</a>
+            </nav>
+        </header>
+
+        <main>
+            <!-- Dashboard Özet Kartları -->
+            <section class="dashboard-summary">
+                <div class="card">
+                    <h3>Bu Ay Toplam Tüketim</h3>
+                    <p class="number" id="currentMonthConsumption">-</p>
+                    <p class="card-subtitle">kWh</p>
+                </div>
+                <div class="card">
+                    <h3>Bu Ay Toplam Maliyet</h3>
+                    <p class="number" id="currentMonthCost">-</p>
+                    <p class="card-subtitle">TL</p>
+                </div>
+                <div class="card">
+                    <h3>Aktif Anormallikler</h3>
+                    <p class="number"><%= anomalies ? anomalies.length : 0 %></p>
+                    <p class="card-subtitle"><a href="/what-to-do" style="color: #dc143c; text-decoration: none;">Detaylar için tıklayın →</a></p>
+                </div>
+                <div class="card">
+                    <h3>Toplam Tasarruf Potansiyeli</h3>
+                    <p class="number" id="totalSavingsPotential">-</p>
+                    <p class="card-subtitle">TL/yıl</p>
+                </div>
+            </section>
+
+            <!-- ANA GRAFİKLER - 2x2 GRID DÜZENİ -->
+            <div class="dashboard-main-grid">
+                
+                <!-- SOL ÜST: Görünürlük - Departman Bazlı Tüketim (Small Multiples) -->
+                <section class="section dashboard-grid-item">
+                    <h2>📊 Departman Bazlı Tüketim Analizi</h2>
+                    <div id="smallMultiplesContainer" class="small-multiples-grid">
+                        <!-- JavaScript ile doldurulacak -->
+                    </div>
+                    <div id="consumptionInsight" class="chart-insight">
+                        <!-- JavaScript ile doldurulacak -->
+                    </div>
+                </section>
+
+                <!-- SAĞ ÜST: Maliyet Dağılımı ve Acil Müdahale -->
+                <section class="section dashboard-grid-item">
+                    <h2>💰 Maliyet Dağılımı</h2>
+                    <div class="dashboard-side-by-side">
+                        <div style="flex: 1; display: flex; flex-direction: column; gap: 0;">
+                            <div class="chart-wrapper" style="flex-shrink: 0;">
+                                <canvas id="costDistributionChart"></canvas>
+                            </div>
+                            <div id="costDistributionLegend" class="cost-legend-horizontal">
+                                <!-- Legend buraya JavaScript ile eklenecek -->
+                            </div>
+                        </div>
+                        <div style="flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 0;">
+                            <div class="gauge-wrapper" style="height: 120px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+                                <canvas id="urgentActionGauge" style="max-width: 120px; max-height: 120px;"></canvas>
+                            </div>
+                            <div id="urgentDepartmentsList" class="urgent-list urgent-list-scrollable">
+                                <!-- JavaScript ile doldurulacak -->
+                            </div>
+                        </div>
+                    </div>
+                    <div id="costInsight" class="chart-insight">
+                        <!-- JavaScript ile doldurulacak -->
+                    </div>
+                </section>
+
+                <!-- SOL ALT: CO₂ Verimlilik -->
+                <section class="section dashboard-grid-item">
+                    <h2>🌍 CO₂ Verimlilik Analizi</h2>
+                    <div class="chart-wrapper">
+                        <canvas id="co2EfficiencyChart"></canvas>
+                    </div>
+                    <div id="co2Insight" class="chart-insight">
+                        <!-- JavaScript ile doldurulacak -->
+                    </div>
+                </section>
+
+                <!-- SAĞ ALT: ROI Karşılaştırması -->
+                <section class="section dashboard-grid-item">
+                    <h2>⚡ ROI Karşılaştırması</h2>
+                    <div class="chart-wrapper">
+                        <canvas id="roiComparisonChart"></canvas>
+                    </div>
+                    <div id="roiInsight" class="chart-insight">
+                        <!-- JavaScript ile doldurulacak -->
+                    </div>
+                </section>
+
+            </div>
+
+
+        </main>
+    </div>
+
+    <script src="/js/dashboard.js"></script>
+    <script>
+        // Dashboard verilerini JavaScript'e aktar
+        <% if (dashboardData && dashboardData.length > 0) { %>
+            const dashboardChartData = <%- JSON.stringify(dashboardData) %>;
+        <% } else { %>
+            const dashboardChartData = [];
+        <% } %>
+        
+        <% if (departments && departments.length > 0) { %>
+            const allDepartments = <%- JSON.stringify(departments.map(d => d.department_name)) %>;
+        <% } else { %>
+            const allDepartments = [];
+        <% } %>
+        
+        
+        <% if (typeof chartData !== 'undefined' && chartData) { %>
+            const chartData = <%- JSON.stringify(chartData) %>;
+        <% } else { %>
+            const chartData = {
+                costDistribution: [],
+                roiComparison: [],
+                urgentAction: { count: 0, max_gauge: 10, departments: [] },
+                co2Efficiency: [],
+            };
+        <% } %>
+        
+        <% if (suggestions && suggestions.length > 0) { %>
+            const suggestionsData = <%- JSON.stringify(suggestions) %>;
+        <% } else { %>
+            const suggestionsData = [];
+        <% } %>
+
+        // 1. GÖRÜNÜRLÜK: Small Multiples (Her departman için mini grafik)
+        function renderConsumptionTrendChart() {
+            const container = document.getElementById('smallMultiplesContainer');
+            if (!container) return;
+            
+            // Tüm departmanları kullan (verisi olsun ya da olmasın) - allDepartments öncelikli
+            let departments = [];
+            if (allDepartments && allDepartments.length > 0) {
+                departments = allDepartments;
+                console.log('allDepartments kullanılıyor:', departments.length, 'departman');
+            } else if (dashboardChartData && dashboardChartData.length > 0) {
+                departments = [...new Set(dashboardChartData.map(d => d.department_name))];
+                console.log('dashboardChartData\'dan departmanlar alındı:', departments.length, 'departman');
+            }
+            
+            if (departments.length === 0) {
+                console.log('Departman bulunamadı - grafik çizilmeyecek');
+                container.innerHTML = '<div class="no-data">Departman verisi bulunamadı</div>';
+                return;
+            }
+            
+            // Ayları sırala ve son ayı al
+            let lastMonthData = [];
+            if (dashboardChartData && dashboardChartData.length > 0) {
+                const months = [...new Set(dashboardChartData.map(d => d.month_key))].sort();
+                const lastMonth = months[months.length - 1];
+                lastMonthData = dashboardChartData.filter(d => d.month_key === lastMonth);
+            }
+            
+            // Her departman için veri hazırla
+            const departmentData = departments.map(dept => {
+                const item = lastMonthData.find(d => {
+                    const dbDeptName = (d.department_name || '').toString().trim();
+                    const searchDeptName = dept.toString().trim();
+                    return dbDeptName.toLowerCase() === searchDeptName.toLowerCase();
+                });
+                return {
+                    name: dept,
+                    kwh: item ? parseFloat(item.total_kwh || 0) : 0,
+                    cost: item ? parseFloat(item.total_cost_tl || 0) : 0,
+                    co2: item ? parseFloat(item.total_co2_kg || 0) : 0
+                };
+            });
+            
+            // Maksimum değerleri bul (normalizasyon için)
+            const maxKwh = Math.max(...departmentData.map(d => d.kwh), 1);
+            const maxCost = Math.max(...departmentData.map(d => d.cost), 1);
+            const maxCo2 = Math.max(...departmentData.map(d => d.co2), 1);
+            
+            // Small Multiples HTML oluştur - Kompakt format
+            let html = '';
+            departmentData.forEach((dept, index) => {
+                const kwhPercent = maxKwh > 0 ? (dept.kwh / maxKwh * 100) : 0;
+                const costPercent = maxCost > 0 ? (dept.cost / maxCost * 100) : 0;
+                const co2Percent = maxCo2 > 0 ? (dept.co2 / maxCo2 * 100) : 0;
+                
+                // Kısa formatlar (büyük sayılar için K/M kullan)
+                const formatKwh = dept.kwh >= 1000 ? (dept.kwh / 1000).toFixed(1) + 'K' : dept.kwh.toFixed(0);
+                const formatCost = dept.cost >= 1000 ? (dept.cost / 1000).toFixed(1) + 'K' : dept.cost.toFixed(0);
+                const formatCo2 = dept.co2 >= 1000 ? (dept.co2 / 1000).toFixed(1) + 'K' : dept.co2.toFixed(0);
+                
+                html += `
+                    <div class="small-multiple-card">
+                        <h4 class="small-multiple-title" title="${dept.name}">${dept.name}</h4>
+                        <div class="small-multiple-metrics">
+                            <div class="small-metric-item">
+                                <div class="small-metric-label">kWh</div>
+                                <div class="small-metric-value" title="${dept.kwh.toLocaleString('tr-TR')}">${formatKwh}</div>
+                                <div class="small-metric-bar">
+                                    <div class="small-metric-bar-fill" style="width: ${kwhPercent}%; background-color: #dc143c;"></div>
+                                </div>
+                            </div>
+                            <div class="small-metric-item">
+                                <div class="small-metric-label">TL</div>
+                                <div class="small-metric-value" title="${dept.cost.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}">${formatCost}</div>
+                                <div class="small-metric-bar">
+                                    <div class="small-metric-bar-fill" style="width: ${costPercent}%; background-color: #991b1b;"></div>
+                                </div>
+                            </div>
+                            <div class="small-metric-item">
+                                <div class="small-metric-label">CO₂</div>
+                                <div class="small-metric-value" title="${dept.co2.toLocaleString('tr-TR')}">${formatCo2}</div>
+                                <div class="small-metric-bar">
+                                    <div class="small-metric-bar-fill" style="width: ${co2Percent}%; background-color: #7f1d1d;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+            
+            // Insight ekle
+            updateConsumptionInsight(departmentData);
+        }
+        
+        // Departman Bazlı Tüketim Analizi - Insight
+        function updateConsumptionInsight(departmentData) {
+            const insightContainer = document.getElementById('consumptionInsight');
+            if (!insightContainer || !departmentData || departmentData.length === 0) return;
+            
+            // En yüksek tüketim, maliyet ve CO₂ olan departmanları bul
+            const topConsumption = departmentData.reduce((max, dept) => dept.kwh > max.kwh ? dept : max, departmentData[0]);
+            const topCost = departmentData.reduce((max, dept) => dept.cost > max.cost ? dept : max, departmentData[0]);
+            const topCo2 = departmentData.reduce((max, dept) => dept.co2 > max.co2 ? dept : max, departmentData[0]);
+            
+            const totalCost = departmentData.reduce((sum, dept) => sum + dept.cost, 0);
+            const topCostPercentage = totalCost > 0 ? ((topCost.cost / totalCost) * 100).toFixed(1) : 0;
+            
+            const insight = `
+                <div class="insight-content">
+                    <strong>💡 Analiz:</strong> <strong>${topCost.name}</strong> departmanı toplam maliyetin <strong>%${topCostPercentage}</strong>'ini oluşturuyor (${topCost.cost.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} TL). 
+                    En yüksek tüketim: <strong>${topConsumption.name}</strong> (${topConsumption.kwh.toLocaleString('tr-TR', {minimumFractionDigits: 0, maximumFractionDigits: 0})} kWh), 
+                    en yüksek CO₂: <strong>${topCo2.name}</strong> (${topCo2.co2.toLocaleString('tr-TR', {minimumFractionDigits: 0, maximumFractionDigits: 0})} kg).
+                </div>
+            `;
+            
+            insightContainer.innerHTML = insight;
+        }
+
+
+        // Özet kartlarını güncelle
+        function updateSummaryCards() {
+            if (!dashboardChartData || dashboardChartData.length === 0) return;
+            
+            // Son ayın verilerini bul
+            const months = [...new Set(dashboardChartData.map(d => d.month_key))].sort();
+            const lastMonth = months[months.length - 1];
+            const lastMonthData = dashboardChartData.filter(d => d.month_key === lastMonth);
+            
+            // Bu ay toplam tüketim ve maliyet
+            const totalConsumption = lastMonthData.reduce((sum, d) => sum + parseFloat(d.total_kwh || 0), 0);
+            const totalCost = lastMonthData.reduce((sum, d) => sum + parseFloat(d.total_cost_tl || 0), 0);
+            
+            document.getElementById('currentMonthConsumption').textContent = totalConsumption.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('currentMonthCost').textContent = totalCost.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            
+            // Toplam tasarruf potansiyeli - Önerilerden hesapla
+            if (typeof suggestionsData !== 'undefined' && suggestionsData.length > 0) {
+                const totalSavings = suggestionsData.reduce((sum, suggestion) => {
+                    // Aylık tasarrufu yıllığa çevir (12 ile çarp)
+                    const monthlySavings = parseFloat(suggestion.expected_saving_tl || 0);
+                    const annualSavings = monthlySavings * 12;
+                    return sum + annualSavings;
+                }, 0);
+                document.getElementById('totalSavingsPotential').textContent = totalSavings.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            } else {
+                document.getElementById('totalSavingsPotential').textContent = '-';
+            }
+        }
+
+        // YENİ KARAR DESTEK GRAFİKLERİ
+
+        // GRAFİK 1: Maliyet Dağılımı Donut Chart - Kariyer.net Stili
+        function renderCostDistributionChart() {
+            const ctx = document.getElementById('costDistributionChart');
+            if (!ctx || !chartData.costDistribution || chartData.costDistribution.length === 0) {
+                if (ctx) {
+                    ctx.getContext('2d').clearRect(0, 0, ctx.width, ctx.height);
+                }
+                console.log('⚠️ Maliyet dağılımı grafiği için veri yok');
+                return;
+            }
+
+            const data = chartData.costDistribution;
+            console.log('Maliyet dağılımı verisi:', data);
+            console.log('Maliyet dağılımı detay:', data.map(d => ({ 
+                name: d.department_name, 
+                cost: d.cost, 
+                percentage: d.percentage,
+                anomalies: d.total_anomalies 
+            })));
+            
+            // Tüm departmanları dahil et (0 değerli olanlar da)
+            const labels = data.map(d => d.department_name || 'Bilinmeyen');
+            const costs = data.map(d => {
+                const cost = parseFloat(d.cost || 0);
+                return Math.max(cost, 0);
+            });
+            
+            // Toplam maliyeti hesapla (0'dan büyük değerler için)
+            const totalCost = costs.reduce((sum, cost) => sum + cost, 0);
+            console.log('Toplam maliyet:', totalCost);
+            console.log('Departman sayısı:', labels.length);
+            
+            // Kırmızı ve siyah tonları (kariyer.net stili) - Tüm departmanlar için yeterli renk
+            const redBlackColors = [
+                '#dc143c',      // Koyu kırmızı
+                '#8b0000',      // Çok koyu kırmızı
+                '#b91c1c',      // Kırmızı
+                '#991b1b',      // Koyu kırmızı
+                '#7f1d1d',      // Çok koyu kırmızı
+                '#450a0a',      // Neredeyse siyah-kırmızı
+                '#1f2937',      // Siyah-gri
+                '#a61e1e',      // Orta-koyu kırmızı (Pazarlama için)
+                '#c92a2a',      // Canlı kırmızı
+                '#862e2e'       // Koyu kırmızı-gri
+            ];
+
+            if (window.costDistributionChartInstance) {
+                window.costDistributionChartInstance.destroy();
+            }
+
+            // Her departman için renk ataması (0 değerli departmanlar da dahil)
+            const backgroundColors = labels.map((label, index) => {
+                return redBlackColors[index % redBlackColors.length];
+            });
+            
+            // Chart.js'de 0 değerli segmentler görünmez, bu yüzden minimum 0.01 değeri kullan
+            // Ama legend'de gerçek 0 değerini göster
+            const chartDataValues = costs.map(cost => cost === 0 ? 0.01 : cost);
+            
+            window.costDistributionChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: chartDataValues,
+                        backgroundColor: backgroundColors,
+                        borderWidth: 3,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    cutout: '65%',
+                    plugins: {
+                        legend: {
+                            display: false // Legend'i gizle, custom legend kullanacağız
+                        },
+                        tooltip: {
+                            enabled: true,
+                            backgroundColor: 'rgba(31, 41, 55, 0.95)',
+                            titleColor: '#ffffff',
+                            bodyColor: '#ffffff',
+                            borderColor: '#dc143c',
+                            borderWidth: 2,
+                            padding: 12,
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 13 },
+                            callbacks: {
+                                label: function(context) {
+                                    const index = context.dataIndex;
+                                    const label = labels[index] || '';
+                                    const realValue = costs[index] || 0; // Gerçek değer (0 olabilir)
+                                    const total = costs.reduce((a, b) => (a || 0) + (b || 0), 0);
+                                    const percentage = total > 0 ? ((realValue / total) * 100).toFixed(2) : '0.00';
+                                    const item = chartData.costDistribution[index];
+                                    return [
+                                        `${label}`,
+                                        `Maliyet: ${realValue.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} TL`,
+                                        `Yüzde: %${percentage}`,
+                                        `Anormallik: Yüksek: ${item?.anomaly_high || 0}, Orta: ${item?.anomaly_medium || 0}, Düşük: ${item?.anomaly_low || 0}`
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    // Animasyon ayarları
+                    animation: {
+                        animateRotate: true,
+                        animateScale: true
+                    }
+                }
+            });
+
+            // Custom legend'i chart'ın altına ekle (yatay)
+            const legendContainer = document.getElementById('costDistributionLegend');
+            if (legendContainer) {
+                let legendHtml = '<div class="cost-legend-items">';
+                data.forEach((item, i) => {
+                    const value = costs[i] || 0;
+                    const totalCostCalc = totalCost > 0 ? totalCost : costs.reduce((a, b) => (a || 0) + (b || 0), 0);
+                    const percentage = totalCostCalc > 0 ? ((value / totalCostCalc) * 100).toFixed(1) : '0.0';
+                    const anomalyBadge = item.total_anomalies > 0 
+                        ? ` <span class="anomaly-badge">(${item.total_anomalies} anormallik)</span>` 
+                        : '';
+                    const costText = `${value.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} TL`;
+                    const color = redBlackColors[i % redBlackColors.length];
+                    
+                    legendHtml += `
+                        <div class="cost-legend-item">
+                            <span class="legend-color" style="background-color: ${color};"></span>
+                            <span class="legend-text">${i + 1}. ${item.department_name || 'Bilinmeyen'}: ${costText} (${percentage}%)${anomalyBadge}</span>
+                        </div>
+                    `;
+                });
+                legendHtml += '</div>';
+                legendContainer.innerHTML = legendHtml;
+            }
+            
+            // Insight ekle
+            updateCostInsight(data, totalCost);
+        }
+        
+        // Maliyet Dağılımı - Insight
+        function updateCostInsight(data, totalCost) {
+            const insightContainer = document.getElementById('costInsight');
+            if (!insightContainer || !data || data.length === 0) return;
+            
+            // En yüksek maliyetli departmanı bul
+            const topDepartment = data.reduce((max, dept) => {
+                const cost = parseFloat(dept.cost || 0);
+                return cost > parseFloat(max.cost || 0) ? dept : max;
+            }, data[0]);
+            
+            const topCost = parseFloat(topDepartment.cost || 0);
+            const topPercentage = totalCost > 0 ? ((topCost / totalCost) * 100).toFixed(1) : 0;
+            const topAnomalies = parseInt(topDepartment.total_anomalies || 0);
+            
+            let insightText = '';
+            if (topCost > 0) {
+                insightText = `<strong>💡 Önemli Bulgu:</strong> <strong>${topDepartment.department_name}</strong> departmanı toplam maliyetin <strong>%${topPercentage}</strong>'ini oluşturuyor (${topCost.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} TL).`;
+                if (topAnomalies > 0) {
+                    insightText += ` Bu departmanda <strong>${topAnomalies}</strong> anormallik tespit edildi. Öncelikli müdahale gerekiyor.`;
+                }
+            } else {
+                insightText = '<strong>💡 Bilgi:</strong> Henüz maliyet verisi bulunmuyor.';
+            }
+            
+            insightContainer.innerHTML = `<div class="insight-content">${insightText}</div>`;
+        }
+
+        // GRAFİK 2: ROI Karşılaştırması Horizontal Bar Chart - Kariyer.net Stili
+        function renderROIComparisonChart() {
+            const ctx = document.getElementById('roiComparisonChart');
+            if (!ctx || !chartData.roiComparison || chartData.roiComparison.length === 0) {
+                if (ctx) {
+                    ctx.getContext('2d').clearRect(0, 0, ctx.width, ctx.height);
+                }
+                return;
+            }
+
+            const data = chartData.roiComparison.slice(0, 10); // En iyi 10
+            // Y ekseni etiketlerini benzersiz yap - başlık + departman adı kombinasyonu
+            const labels = data.map((d, index) => {
+                const title = d.title || 'Öneri';
+                const deptName = d.department_name || '';
+                
+                // Departman adı varsa ve başlıkta yoksa ekle
+                if (deptName && !title.toLowerCase().includes(deptName.toLowerCase())) {
+                    return `${title} (${deptName})`;
+                }
+                
+                // Eğer departman adı yoksa veya zaten başlıkta varsa, aynı başlık kontrolü yap
+                const sameTitleItems = data.filter(item => (item.title || 'Öneri') === title);
+                if (sameTitleItems.length > 1) {
+                    // Aynı başlıktan kaçıncı sırada olduğunu bul
+                    const sameTitleBefore = data.slice(0, index).filter(item => (item.title || 'Öneri') === title).length;
+                    if (deptName) {
+                        return `${title} - ${deptName}`;
+                    }
+                    return `${title} #${sameTitleBefore + 1}`;
+                }
+                
+                return title;
+            });
+            const roiMonths = data.map(d => parseFloat(d.roi_months.toFixed(1)));
+
+            // Kırmızı tonları (ROI düşük = açık kırmızı, ROI yüksek = koyu kırmızı/siyah)
+            const maxROI = Math.max(...roiMonths, 1);
+            const colors = roiMonths.map(roi => {
+                const ratio = roi / maxROI;
+                if (ratio < 0.3) return '#dc143c';      // Açık kırmızı (iyi ROI)
+                if (ratio < 0.6) return '#991b1b';      // Orta kırmızı
+                if (ratio < 0.8) return '#7f1d1d';      // Koyu kırmızı
+                return '#450a0a';                        // Çok koyu kırmızı/siyah (kötü ROI)
+            });
+
+            if (window.roiComparisonChartInstance) {
+                window.roiComparisonChartInstance.destroy();
+            }
+
+            window.roiComparisonChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'ROI (Ay)',
+                        data: roiMonths,
+                        backgroundColor: colors,
+                        borderColor: '#ffffff',
+                        borderWidth: 2,
+                        borderRadius: 4,
+                        barThickness: 35
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            left: 10,
+                            right: 10,
+                            top: 10,
+                            bottom: 10
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(31, 41, 55, 0.95)',
+                            titleColor: '#ffffff',
+                            bodyColor: '#ffffff',
+                            borderColor: '#dc143c',
+                            borderWidth: 2,
+                            padding: 12,
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 13 },
+                            callbacks: {
+                                label: function(context) {
+                                    const index = context.dataIndex;
+                                    const item = data[index];
+                                    return [
+                                        `ROI: ${item.roi_months.toFixed(1)} ay`,
+                                        `Yatırım: ${item.investment_cost.toLocaleString('tr-TR')} TL`,
+                                        `Yıllık Tasarruf: ${item.annual_savings.toLocaleString('tr-TR')} TL`,
+                                        `Aylık Tasarruf: ${item.monthly_savings.toLocaleString('tr-TR')} TL`
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Geri Dönüş Süresi (Ay)',
+                                font: { size: 14, weight: 'bold', color: '#1f2937' },
+                                padding: { top: 10, bottom: 10 }
+                            },
+                            ticks: {
+                                font: { size: 12, color: '#6b7280' },
+                                callback: function(value) {
+                                    return value.toFixed(1) + ' Ay';
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)',
+                                drawBorder: false
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                font: { size: 13, weight: '500', color: '#1f2937' },
+                                padding: 8
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Insight ekle
+            updateROIInsight(data);
+        }
+        
+        // ROI Karşılaştırması - Insight
+        function updateROIInsight(data) {
+            const insightContainer = document.getElementById('roiInsight');
+            if (!insightContainer || !data || data.length === 0) return;
+            
+            // En kısa ROI'ye sahip öneriyi bul (en iyi)
+            const bestROI = data[0]; // Zaten sıralı geldiği için ilk eleman en iyisi
+            const roiMonths = parseFloat(bestROI.roi_months || 999);
+            
+            let insightText = '';
+            if (bestROI && roiMonths < 999) {
+                const investment = parseFloat(bestROI.investment_cost || 0);
+                const annualSavings = parseFloat(bestROI.annual_savings || 0);
+                const deptName = bestROI.department_name || 'Genel';
+                
+                insightText = `<strong>💡 En İyi Yatırım Fırsatı:</strong> <strong>"${bestROI.title}"</strong> önerisi ${deptName} departmanı için en kısa geri dönüş süresine sahip (${roiMonths.toFixed(1)} ay). 
+                Yatırım: ${investment.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} TL, 
+                Yıllık Tasarruf: ${annualSavings.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} TL. 
+                Bu öneri öncelikli olarak değerlendirilmeli.`;
+            } else {
+                insightText = '<strong>💡 Bilgi:</strong> ROI karşılaştırması için veri bulunmuyor.';
+            }
+            
+            insightContainer.innerHTML = `<div class="insight-content">${insightText}</div>`;
+        }
+        
+        // CO₂ Verimlilik Analizi - Insight
+        function updateCO2Insight(data, efficiencyScores) {
+            const insightContainer = document.getElementById('co2Insight');
+            if (!insightContainer || !data || data.length === 0) return;
+            
+            // En düşük verimlilik skoruna sahip departmanı bul (en verimsiz)
+            let minScore = 100;
+            let worstDept = null;
+            data.forEach((dept, index) => {
+                if (efficiencyScores[index] < minScore) {
+                    minScore = efficiencyScores[index];
+                    worstDept = { ...dept, score: minScore };
+                }
+            });
+            
+            let insightText = '';
+            if (worstDept) {
+                const kwhPerEmp = worstDept.kwh_per_employee ? worstDept.kwh_per_employee.toFixed(2) : 'N/A';
+                const co2Intensity = worstDept.co2_intensity ? worstDept.co2_intensity.toFixed(2) : 'N/A';
+                insightText = `<strong>⚠️ Önemli Bulgu:</strong> <strong>${worstDept.department_name}</strong> departmanı en düşük verimlilik skoruna sahip (${minScore.toFixed(1)}/100). 
+                kWh/Çalışan: ${kwhPerEmp}, CO₂ Yoğunluğu: ${co2Intensity} kg/TL. Bu departman için enerji verimliliği iyileştirme önerileri önceliklendirilmeli.`;
+            } else {
+                insightText = '<strong>💡 Bilgi:</strong> Verimlilik verisi bulunmuyor.';
+            }
+            
+            insightContainer.innerHTML = `<div class="insight-content">${insightText}</div>`;
+        }
+
+        // GRAFİK 3: Acil Müdahale Gauge Chart
+        function renderUrgentActionGauge() {
+            const ctx = document.getElementById('urgentActionGauge');
+            const listContainer = document.getElementById('urgentDepartmentsList');
+            
+            if (!ctx || !chartData.urgentAction) {
+                if (ctx) {
+                    ctx.getContext('2d').clearRect(0, 0, ctx.width, ctx.height);
+                }
+                if (listContainer) {
+                    listContainer.innerHTML = '<div class="no-data">Acil müdahale gerektiren durum yok.</div>';
+                }
+                return;
+            }
+
+            const urgentData = chartData.urgentAction;
+            // Gerçek count değerini kullan (toplam high anormallik sayısı)
+            const count = urgentData.count || 0;
+            const departmentCount = urgentData.department_count || 0;
+            const maxGauge = urgentData.max_gauge || Math.max(10, count);
+            // Gauge yüzdesini hesapla (maxGauge'e göre)
+            const percentage = maxGauge > 0 ? (Math.min(count, maxGauge) / maxGauge) * 100 : 0;
+            
+            console.log('Urgent Action Data:', {
+                totalHighAnomalies: count,
+                departmentCount: departmentCount,
+                maxGauge: maxGauge,
+                departments: urgentData.departments?.length || 0
+            });
+
+            // Gauge Chart (Donut chart ile simüle edilmiş)
+            if (window.urgentActionGaugeInstance) {
+                window.urgentActionGaugeInstance.destroy();
+            }
+
+            window.urgentActionGaugeInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [Math.min(count, maxGauge), maxGauge - Math.min(count, maxGauge)],
+                        backgroundColor: [
+                            count > 5 ? '#dc143c' : 
+                            count > 2 ? '#991b1b' : 
+                            '#7f1d1d',
+                            '#e5e7eb'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    cutout: '70%',
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            enabled: false
+                        }
+                    },
+                    layout: {
+                        padding: 5
+                    }
+                },
+                plugins: [{
+                    id: 'gaugeText',
+                    afterDraw: (chart) => {
+                        const ctx = chart.ctx;
+                        const centerX = chart.chartArea.left + (chart.chartArea.right - chart.chartArea.left) / 2;
+                        const centerY = chart.chartArea.top + (chart.chartArea.bottom - chart.chartArea.top) / 2;
+                        
+                        ctx.save();
+                        ctx.font = 'bold 24px Arial';
+                        ctx.fillStyle = count > 5 ? '#dc143c' : count > 2 ? '#991b1b' : '#7f1d1d';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        // Toplam high anormallik sayısını göster
+                        ctx.fillText(count.toString(), centerX, centerY - 8);
+                        
+                        ctx.font = '10px Arial';
+                        ctx.fillStyle = '#666';
+                        ctx.fillText('Yüksek Seviye', centerX, centerY + 8);
+                        ctx.fillText('Anormallik', centerX, centerY + 20);
+                        
+                        // Departman sayısını da göster
+                        if (departmentCount > 0) {
+                            ctx.font = '9px Arial';
+                            ctx.fillStyle = '#999';
+                            ctx.fillText(`${departmentCount} departman`, centerX, centerY + 32);
+                        }
+                        ctx.restore();
+                    }
+                }]
+            });
+
+            // Departman listesi - High anormallik olan tüm departmanları göster
+            if (listContainer && urgentData.departments && urgentData.departments.length > 0) {
+                // Tüm departmanları göster (high anormallik olanlar)
+                const departmentsToShow = urgentData.departments;
+                let html = `<h3>Acil Müdahale Gereken Departmanlar (${departmentCount} departman, ${count} anormallik):</h3><ul class="urgent-list-items">`;
+                departmentsToShow.forEach(dept => {
+                    const shortReason = dept.latest_reason && dept.latest_reason.length > 50 
+                        ? dept.latest_reason.substring(0, 50) + '...' 
+                        : (dept.latest_reason || 'Neden belirtilmemiş');
+                    html += `
+                        <li>
+                            <span class="urgent-dept-name"><strong>${dept.department_name}</strong></span>
+                            <span class="urgent-dept-count">${dept.count} anormallik</span>
+                            <div class="urgent-dept-reason">${shortReason}</div>
+                        </li>
+                    `;
+                });
+                html += '</ul>';
+                listContainer.innerHTML = html;
+            } else if (listContainer) {
+                listContainer.innerHTML = '<div class="no-data">Acil müdahale gerektiren departman yok.</div>';
+            }
+        }
+
+        // GRAFİK 4: CO₂ Verimlilik Vertical Bar Chart - Kariyer.net Stili (Bubble yerine Bar)
+        function renderCO2EfficiencyChart() {
+            const ctx = document.getElementById('co2EfficiencyChart');
+            if (!ctx || !chartData.co2Efficiency || chartData.co2Efficiency.length === 0) {
+                if (ctx) {
+                    ctx.getContext('2d').clearRect(0, 0, ctx.width, ctx.height);
+                }
+                console.log('⚠️ CO₂ verimlilik grafiği için veri yok');
+                return;
+            }
+
+            const data = chartData.co2Efficiency;
+            console.log('CO₂ verimlilik verisi:', data);
+            
+            // Kırmızı tonları (verimlilik düşük = koyu, yüksek = açık)
+            const redBlackColors = [
+                '#dc143c', '#b91c1c', '#991b1b', '#7f1d1d', '#450a0a', '#1f2937'
+            ];
+
+            if (window.co2EfficiencyChartInstance) {
+                window.co2EfficiencyChartInstance.destroy();
+            }
+
+            // Verimlilik skoru hesapla (düşük tüketim + düşük CO₂ = yüksek skor)
+            const maxKwhPerEmployee = Math.max(...data.map(d => d.kwh_per_employee || 0), 1);
+            const maxCo2Intensity = Math.max(...data.map(d => d.co2_intensity || 0), 1);
+            
+            const efficiencyScores = data.map(item => {
+                const kwhScore = 1 - (item.kwh_per_employee / maxKwhPerEmployee);
+                const co2Score = 1 - (item.co2_intensity / maxCo2Intensity);
+                return (kwhScore + co2Score) / 2 * 100;
+            });
+
+            window.co2EfficiencyChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.department_name),
+                    datasets: [{
+                        label: 'Verimlilik Skoru',
+                        data: efficiencyScores,
+                        backgroundColor: redBlackColors.slice(0, data.length),
+                        borderColor: '#ffffff',
+                        borderWidth: 2,
+                        borderRadius: 4,
+                        barThickness: 40
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            left: 10,
+                            right: 10,
+                            top: 10,
+                            bottom: 10
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(31, 41, 55, 0.95)',
+                            titleColor: '#ffffff',
+                            bodyColor: '#ffffff',
+                            borderColor: '#dc143c',
+                            borderWidth: 2,
+                            padding: 12,
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 13 },
+                            callbacks: {
+                                label: function(context) {
+                                    const index = context.dataIndex;
+                                    const item = data[index];
+                                    return [
+                                        `Verimlilik Skoru: ${efficiencyScores[index].toFixed(1)}/100`,
+                                        `kWh/Çalışan: ${item.kwh_per_employee.toFixed(2)}`,
+                                        `CO₂ Yoğunluğu: ${item.co2_intensity.toFixed(2)} kg/TL`,
+                                        `Toplam Maliyet: ${item.cost_tl.toLocaleString('tr-TR')} TL`,
+                                        `Toplam CO₂: ${item.co2_kg.toLocaleString('tr-TR')} kg`
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Verimlilik Skoru (0-100)',
+                                font: { size: 14, weight: 'bold', color: '#1f2937' },
+                                padding: { top: 10, bottom: 10 }
+                            },
+                            ticks: {
+                                font: { size: 12, color: '#6b7280' },
+                                callback: function(value) {
+                                    return value + '/100';
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)',
+                                drawBorder: false
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                font: { size: 12, weight: '500', color: '#1f2937' },
+                                maxRotation: 45,
+                                minRotation: 45
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+
+        // Sayfa yüklendiğinde grafikleri çiz
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Dashboard yüklendi');
+            updateSummaryCards();
+            
+            // Grafikleri çiz
+            renderConsumptionTrendChart();
+            renderCostDistributionChart();
+            renderROIComparisonChart();
+            renderUrgentActionGauge();
+            renderCO2EfficiencyChart();
+        });
+    </script>
+    <script>
+        // Departman yönetimi ve enerji verisi ekleme artık /departments sayfasında
+    </script>
+</body>
+</html>
+

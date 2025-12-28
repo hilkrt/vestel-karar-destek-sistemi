@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vestel Karar Destek Sistemi</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Vestel Karar Destek Sistemi</h1>
+            <nav>
+                <a href="/">Dashboard</a>
+                <a href="/departments">Departmanlar</a>
+                <a href="/what-to-do">Ne Yapılmalı</a>
+                <a href="/anomalies">Anormallikler</a>
+                <a href="/suggestions" class="active">Öneriler</a>
+                <a href="/scenarios">Senaryo Analizi</a>
+            </nav>
+        </header>
+
+        <main>
+            <section class="section">
+                <h2>Enerji Tasarrufu Önerileri</h2>
+                <p class="section-description">Aşağıda enerji tüketimini optimize etmek için öneriler listelenmektedir.</p>
+            </section>
+
+            <!-- Filtreleme ve Sıralama Kontrolleri -->
+            <section class="section">
+                <div class="filter-sort-controls">
+                    <div class="filter-group">
+                        <label for="departmentFilter">Departman Filtresi:</label>
+                        <select id="departmentFilter" class="filter-select">
+                            <option value="all">Tüm Departmanlar</option>
+                            <% if (suggestions && suggestions.length > 0) { %>
+                                <% 
+                                const uniqueDepartments = [...new Set(suggestions.map(s => s.department_name).filter(Boolean))].sort();
+                                uniqueDepartments.forEach(dept => { %>
+                                    <option value="<%= dept %>"><%= dept %></option>
+                                <% }); %>
+                            <% } %>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="sortBy">Sıralama:</label>
+                        <select id="sortBy" class="filter-select">
+                            <option value="department">Departman (A-Z)</option>
+                            <option value="department-desc">Departman (Z-A)</option>
+                            <option value="title">Başlık (A-Z)</option>
+                            <option value="title-desc">Başlık (Z-A)</option>
+                            <option value="saving-kwh">Tasarruf (kWh) - Yüksekten Düşüğe</option>
+                            <option value="saving-kwh-asc">Tasarruf (kWh) - Düşükten Yükseğe</option>
+                            <option value="saving-tl">Tasarruf (TL) - Yüksekten Düşüğe</option>
+                            <option value="saving-tl-asc">Tasarruf (TL) - Düşükten Yükseğe</option>
+                            <option value="co2">CO₂ Azaltımı - Yüksekten Düşüğe</option>
+                            <option value="co2-asc">CO₂ Azaltımı - Düşükten Yükseğe</option>
+                            <option value="month">Ay - Yeni → Eski</option>
+                            <option value="month-old">Ay - Eski → Yeni</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <button id="resetFilters" class="btn btn-secondary">Filtreleri Sıfırla</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Öneriler Tablosu -->
+            <section class="section">
+                <div class="table-container">
+                    <table id="suggestionsTable">
+                        <thead>
+                            <tr>
+                                <th data-sort="department">Departman ⇅</th>
+                                <th data-sort="title">Başlık ⇅</th>
+                                <th>Öneri Detayı</th>
+                                <th data-sort="saving-kwh">Beklenen Tasarruf (kWh) ⇅</th>
+                                <th data-sort="saving-tl">Beklenen Tasarruf (TL) ⇅</th>
+                                <th data-sort="co2">CO₂ Azaltımı (kg) ⇅</th>
+                                <th data-sort="month">Ay ⇅</th>
+                            </tr>
+                        </thead>
+                        <tbody id="suggestionsTableBody">
+                            <% if (suggestions && suggestions.length > 0) { %>
+                                <% suggestions.forEach(suggestion => { %>
+                                    <tr data-department="<%= suggestion.department_name || '' %>" 
+                                        data-month="<%= suggestion.month_key %>"
+                                        data-saving-kwh="<%= parseFloat(suggestion.expected_saving_kwh || 0) %>"
+                                        data-saving-tl="<%= parseFloat(suggestion.expected_saving_tl || 0) %>"
+                                        data-saving-co2="<%= parseFloat(suggestion.expected_saving_co2_kg || 0) %>"
+                                        data-title="<%= (suggestion.title || '').toLowerCase() %>">
+                                        <td><strong><%= suggestion.department_name %></strong></td>
+                                        <td><%= suggestion.title %></td>
+                                        <td class="suggestion-text"><%= suggestion.suggestion_text %></td>
+                                        <td class="saving-positive"><%= parseFloat(suggestion.expected_saving_kwh || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></td>
+                                        <td class="saving-positive"><%= parseFloat(suggestion.expected_saving_tl || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %> TL</td>
+                                        <td class="saving-positive"><%= parseFloat(suggestion.expected_saving_co2_kg || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></td>
+                                        <td data-month-value="<%= new Date(suggestion.month_key).getTime() %>">
+                                            <%= new Date(suggestion.month_key).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long' }) %>
+                                            <br><button class="btn-edit-suggestion" data-id="<%= suggestion.suggestion_id %>" style="background-color: #2563eb; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75em; margin-top: 5px;">✏️ Düzenle</button>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="7" class="no-data">Öneri bulunamadı</td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="resultsCount" class="results-count"></div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Öneri Düzenleme Modal -->
+    <div id="suggestionModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="suggestionModalTitle">Öneri Düzenle</h3>
+                <span class="modal-close" id="suggestionModalClose">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="suggestionForm">
+                    <input type="hidden" id="suggestionId" name="suggestion_id">
+                    <div class="form-group">
+                        <label for="suggestionTitle">Başlık *</label>
+                        <input type="text" id="suggestionTitle" name="title" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="suggestionText">Öneri Detayı *</label>
+                        <textarea id="suggestionText" name="suggestion_text" class="form-control" rows="4" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="suggestionSavingKwh">Beklenen Tasarruf (kWh)</label>
+                        <input type="number" id="suggestionSavingKwh" name="expected_saving_kwh" class="form-control" step="0.01" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="suggestionSavingTl">Beklenen Tasarruf (TL)</label>
+                        <input type="number" id="suggestionSavingTl" name="expected_saving_tl" class="form-control" step="0.01" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="suggestionSavingCo2">CO₂ Azaltımı (kg)</label>
+                        <input type="number" id="suggestionSavingCo2" name="expected_saving_co2_kg" class="form-control" step="0.01" min="0">
+                    </div>
+                    <div class="form-group" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                        <button type="button" class="btn" id="cancelSuggestionBtn" style="background-color: #666666; color: white;">İptal</button>
+                        <button type="submit" class="btn btn-primary">Kaydet</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/suggestions.js"></script>
+    <script>
+        // Öneri düzenleme modal'ı
+        document.addEventListener('DOMContentLoaded', function() {
+            const suggestionModal = document.getElementById('suggestionModal');
+            const suggestionModalTitle = document.getElementById('suggestionModalTitle');
+            const suggestionModalClose = document.getElementById('suggestionModalClose');
+            const suggestionForm = document.getElementById('suggestionForm');
+            const cancelSuggestionBtn = document.getElementById('cancelSuggestionBtn');
+            const editButtons = document.querySelectorAll('.btn-edit-suggestion');
+
+            // Düzenle butonlarına event listener ekle
+            editButtons.forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const suggestionId = this.getAttribute('data-id');
+                
+                try {
+                    const response = await fetch(`/api/suggestions/${suggestionId}`);
+                    const result = await response.json();
+                    
+                    if (result.success && result.data) {
+                        const suggestion = result.data;
+                        
+                        document.getElementById('suggestionId').value = suggestion.suggestion_id;
+                        document.getElementById('suggestionTitle').value = suggestion.title || '';
+                        document.getElementById('suggestionText').value = suggestion.suggestion_text || '';
+                        document.getElementById('suggestionSavingKwh').value = suggestion.expected_saving_kwh || 0;
+                        document.getElementById('suggestionSavingTl').value = suggestion.expected_saving_tl || 0;
+                        document.getElementById('suggestionSavingCo2').value = suggestion.expected_saving_co2_kg || 0;
+                        
+                        suggestionModal.style.display = 'block';
+                    } else {
+                        alert('Öneri yüklenirken hata oluştu');
+                    }
+                } catch (error) {
+                    console.error('Öneri yükleme hatası:', error);
+                    alert('Öneri yüklenirken hata oluştu');
+                }
+            });
+        });
+
+        // Modal kapatma
+        if (suggestionModalClose) {
+            suggestionModalClose.addEventListener('click', function() {
+                suggestionModal.style.display = 'none';
+            });
+        }
+
+        if (cancelSuggestionBtn) {
+            cancelSuggestionBtn.addEventListener('click', function() {
+                suggestionModal.style.display = 'none';
+            });
+        }
+
+        // Modal dışına tıklayınca kapat
+        window.addEventListener('click', function(event) {
+            if (event.target === suggestionModal) {
+                suggestionModal.style.display = 'none';
+            }
+        });
+
+        // Form submit
+        if (suggestionForm) {
+            suggestionForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const suggestionId = document.getElementById('suggestionId').value;
+                const formData = {
+                    title: document.getElementById('suggestionTitle').value,
+                    suggestion_text: document.getElementById('suggestionText').value,
+                    expected_saving_kwh: parseFloat(document.getElementById('suggestionSavingKwh').value) || 0,
+                    expected_saving_tl: parseFloat(document.getElementById('suggestionSavingTl').value) || 0,
+                    expected_saving_co2_kg: parseFloat(document.getElementById('suggestionSavingCo2').value) || 0
+                };
+
+                try {
+                    const response = await fetch(`/api/suggestions/${suggestionId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(formData)
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        alert('Öneri başarıyla güncellendi!');
+                        suggestionModal.style.display = 'none';
+                        location.reload(); // Sayfayı yenile
+                    } else {
+                        alert('Hata: ' + (result.message || 'Öneri güncellenirken hata oluştu'));
+                    }
+                } catch (error) {
+                    console.error('Öneri güncelleme hatası:', error);
+                    alert('Öneri güncellenirken hata oluştu');
+                }
+            });
+        }
+        });
+    </script>
+</body>
+</html>
+

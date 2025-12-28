@@ -1,0 +1,27 @@
+{
+  "ignore": [
+    "node_modules/*",
+    "*.log",
+    ".git/*"
+  ],
+  "watch": [
+    "server.js",
+    "config",
+    "controllers",
+    "models",
+    "routes",
+    "views"
+  ],
+  "ext": "js,ejs"
+}
+
+
+
+
+
+
+
+
+
+
+

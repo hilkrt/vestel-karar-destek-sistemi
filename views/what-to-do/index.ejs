@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ne Yapılmalı - Vestel Karar Destek Sistemi</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-top">
+                <img src="/images/vestel-logo.png" alt="VESTEL" class="vestel-logo" onerror="this.style.display='none'">
+                <h1>Vestel Karar Destek Sistemi</h1>
+            </div>
+            <nav>
+                <a href="/">Dashboard</a>
+                <a href="/departments">Departmanlar</a>
+                <a href="/what-to-do" class="active">Ne Yapılmalı</a>
+                <a href="/anomalies">Anormallikler</a>
+                <a href="/suggestions">Öneriler</a>
+                <a href="/scenarios">Senaryo Analizi</a>
+            </nav>
+        </header>
+
+        <main>
+            <!-- 2. ANLAMLANDIRMA: Bu tüketim normal mi? -->
+            <section class="section">
+                <h2>⚠️ Anlamlandırma: Bu Tüketim Normal Mi?</h2>
+                <p class="section-description">Önceki aya göre değişimler ve anormallik durumu</p>
+                
+                <!-- Anormallikler ve Değişimler - Departman Bazında Gruplandırılmış -->
+                <div class="anomalies-grid" id="anomaliesGrid">
+                    <!-- JavaScript ile doldurulacak -->
+                </div>
+            </section>
+
+            <!-- 3. KARAR ÜRETME: Ne yapmalıyım? -->
+            <section class="section">
+                <h2>💡 Karar Üretme: Ne Yapmalıyım?</h2>
+                <p class="section-description">Tasarruf önerileri, beklenen kazançlar ve senaryo karşılaştırması</p>
+                
+                <!-- Tasarruf Önerileri Kartları -->
+                <div class="suggestions-grid" id="suggestionsGrid">
+                    <!-- JavaScript ile doldurulacak -->
+                </div>
+            </section>
+
+            <!-- Anormallikler Tablosu -->
+            <section class="section">
+                <h2>📋 Son Anormallikler</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Departman</th>
+                                <th>Enerji Türü</th>
+                                <th>Seviye</th>
+                                <th>Neden</th>
+                                <th>Tarih</th>
+                                <th>Tüketim (kWh)</th>
+                                <th>Maliyet (TL)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (anomalies && anomalies.length > 0) { %>
+                                <% anomalies.forEach(anomaly => { %>
+                                    <tr class="anomaly-<%= anomaly.anomaly_level %>">
+                                        <td><%= anomaly.department_name %></td>
+                                        <td><%= anomaly.energy_name %></td>
+                                        <td><span class="badge badge-<%= anomaly.anomaly_level %>"><%= anomaly.anomaly_level %></span></td>
+                                        <td><%= anomaly.anomaly_reason %></td>
+                                        <td><%= new Date(anomaly.detected_at).toLocaleDateString('tr-TR') %></td>
+                                        <td><%= parseFloat(anomaly.consumption_kwh).toLocaleString('tr-TR') %></td>
+                                        <td><%= parseFloat(anomaly.cost).toLocaleString('tr-TR') %></td>
+                                    </tr>
+                                <% }); %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="7" class="no-data">Anormallik bulunamadı</td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Öneriler Tablosu -->
+            <section class="section">
+                <h2>💡 Enerji Tasarrufu Önerileri</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Departman</th>
+                                <th>Başlık</th>
+                                <th>Beklenen Tasarruf (kWh)</th>
+                                <th>Beklenen Tasarruf (TL)</th>
+                                <th>CO₂ Azaltımı (kg)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (suggestions && suggestions.length > 0) { %>
+                                <% suggestions.forEach(suggestion => { %>
+                                    <tr>
+                                        <td><%= suggestion.department_name %></td>
+                                        <td><%= suggestion.title %></td>
+                                        <td><%= parseFloat(suggestion.expected_saving_kwh || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></td>
+                                        <td><%= parseFloat(suggestion.expected_saving_tl || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></td>
+                                        <td><%= parseFloat(suggestion.expected_saving_co2_kg || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></td>
+                                    </tr>
+                                <% }); %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="5" class="no-data">Öneri bulunamadı</td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // Anormallikleri render et - Departman bazında gruplandırılmış
+        function renderAnomalies() {
+            const container = document.getElementById('anomaliesGrid');
+            if (!container) return;
+
+            <% if (anomalies && anomalies.length > 0) { %>
+                const anomaliesData = <%- JSON.stringify(anomalies) %>;
+                
+                // Departman bazında grupla
+                const deptMap = new Map();
+                
+                anomaliesData.forEach(anomaly => {
+                    const deptName = anomaly.department_name || 'Bilinmeyen';
+                    if (!deptMap.has(deptName)) {
+                        deptMap.set(deptName, {
+                            department_name: deptName,
+                            anomalies: [],
+                            highCount: 0,
+                            mediumCount: 0,
+                            lowCount: 0
+                        });
+                    }
+                    const dept = deptMap.get(deptName);
+                    dept.anomalies.push(anomaly);
+                    
+                    // Seviye sayılarını güncelle
+                    if (anomaly.anomaly_level === 'high') dept.highCount++;
+                    else if (anomaly.anomaly_level === 'medium') dept.mediumCount++;
+                    else if (anomaly.anomaly_level === 'low') dept.lowCount++;
+                });
+                
+                // Departmanları toplam anormallik sayısına göre sırala (yüksekten düşüğe)
+                const departments = Array.from(deptMap.values())
+                    .sort((a, b) => (b.highCount * 3 + b.mediumCount * 2 + b.lowCount) - (a.highCount * 3 + a.mediumCount * 2 + a.lowCount));
+                
+                const levelNames = {
+                    'high': 'Yüksek',
+                    'medium': 'Orta',
+                    'low': 'Düşük'
+                };
+                
+                let html = '';
+                
+                // Her departman için bir bölüm oluştur
+                departments.forEach((dept, deptIndex) => {
+                    const totalAnomalies = dept.anomalies.length;
+                    const isExpanded = deptIndex === 0; // İlk departman varsayılan olarak açık
+                    
+                    html += `
+                        <div class="anomaly-department-group" data-dept-index="${deptIndex}">
+                            <div class="department-group-header" onclick="toggleDepartmentGroup(${deptIndex})">
+                                <div class="department-header-left">
+                                    <span class="department-toggle-icon">${isExpanded ? '▼' : '▶'}</span>
+                                    <h3 class="department-group-title">${dept.department_name}</h3>
+                                </div>
+                                <div class="department-group-stats">
+                                    ${dept.highCount > 0 ? `<span class="stat-item stat-high">${dept.highCount} Yüksek</span>` : ''}
+                                    ${dept.mediumCount > 0 ? `<span class="stat-item stat-medium">${dept.mediumCount} Orta</span>` : ''}
+                                    ${dept.lowCount > 0 ? `<span class="stat-item stat-low">${dept.lowCount} Düşük</span>` : ''}
+                                    <span class="stat-item stat-total">${totalAnomalies} Anormallik</span>
+                                </div>
+                            </div>
+                            <div class="anomalies-grid-department ${isExpanded ? 'expanded' : 'collapsed'}" id="dept-group-${deptIndex}">
+                    `;
+                    
+                    // Bu departmana ait anormallik kartlarını ekle
+                    dept.anomalies.forEach(anomaly => {
+                        const levelClass = `anomaly-${anomaly.anomaly_level}`;
+                        
+                        html += `
+                            <div class="anomaly-card ${levelClass}">
+                                <div class="anomaly-header">
+                                    <div class="anomaly-energy-type">
+                                        <span class="energy-icon">⚡</span>
+                                        <span class="energy-name">${anomaly.energy_name || 'Enerji Türü'}</span>
+                                    </div>
+                                    <span class="badge badge-${anomaly.anomaly_level}">${levelNames[anomaly.anomaly_level] || anomaly.anomaly_level}</span>
+                                </div>
+                                <div class="anomaly-reason">
+                                    <strong>🔍 Neden:</strong> ${anomaly.anomaly_reason || 'Belirtilmemiş'}
+                                </div>
+                                <div class="anomaly-details">
+                                    <div class="detail-row">
+                                        <span class="detail-label">📊 Tüketim:</span>
+                                        <span class="detail-value">${parseFloat(anomaly.consumption_kwh || 0).toLocaleString('tr-TR')} kWh</span>
+                                    </div>
+                                    <div class="detail-row">
+                                        <span class="detail-label">💰 Maliyet:</span>
+                                        <span class="detail-value">${parseFloat(anomaly.cost || 0).toLocaleString('tr-TR')} TL</span>
+                                    </div>
+                                    <div class="detail-row">
+                                        <span class="detail-label">📅 Tarih:</span>
+                                        <span class="detail-value">${new Date(anomaly.detected_at).toLocaleDateString('tr-TR')}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                container.innerHTML = html;
+            <% } else { %>
+                container.innerHTML = '<div class="no-data">Anormallik bulunamadı</div>';
+            <% } %>
+        }
+
+        // Önerileri render et
+        function renderSuggestions() {
+            const container = document.getElementById('suggestionsGrid');
+            if (!container) return;
+
+            <% if (suggestions && suggestions.length > 0) { %>
+                const suggestionsData = <%- JSON.stringify(suggestions) %>;
+                
+                let html = '';
+                suggestionsData.slice(0, 12).forEach(suggestion => {
+                    // Açıklama oluştur - önce description/suggestion_text, yoksa title'dan anlamlı bir açıklama
+                    let descriptionText = suggestion.description || suggestion.suggestion_text || '';
+                    
+                    // Eğer açıklama yoksa, title'a göre açıklama oluştur
+                    if (!descriptionText || descriptionText.trim() === '') {
+                        const title = (suggestion.title || '').toLowerCase();
+                        const deptName = suggestion.department_name || 'Bu departmanda';
+                        
+                        if (title.includes('acil') || title.includes('yüksek artış')) {
+                            descriptionText = `${deptName} enerji tüketiminde ciddi bir artış tespit edildi. Acilen tüketim kontrolü yapılmalı ve enerji verimliliği önlemleri uygulanmalıdır.`;
+                        } else if (title.includes('artış') || title.includes('orta')) {
+                            descriptionText = `${deptName} enerji tüketiminde orta seviyede bir artış gözlemlendi. Tüketim kalıpları gözden geçirilmeli ve iyileştirme fırsatları değerlendirilmelidir.`;
+                        } else if (title.includes('verimlilik') || title.includes('optimizasyon')) {
+                            descriptionText = `${deptName} enerji verimliliğini artırmak için optimizasyon çalışmaları yapılmalıdır. Mevcut ekipmanların verimliliği kontrol edilmeli ve gerekirse modernizasyon düşünülmelidir.`;
+                        } else if (title.includes('kontrol') || title.includes('izleme')) {
+                            descriptionText = `${deptName} enerji tüketiminin düzenli olarak izlenmesi ve kontrol edilmesi gerekmektedir. Anormal tüketim durumları için alarm sistemleri kurulmalıdır.`;
+                        } else if (title.includes('bakım')) {
+                            descriptionText = `${deptName} enerji ekipmanlarının periyodik bakımı yapılmalıdır. Bakımı geciken ekipmanlar enerji verimliliğini düşürebilir.`;
+                        } else {
+                            descriptionText = `${deptName} enerji tüketimini optimize etmek için gerekli önlemler alınmalıdır. Enerji yönetimi stratejileri gözden geçirilmeli ve uygulanmalıdır.`;
+                        }
+                    }
+                    
+                    html += `
+                        <div class="suggestion-card">
+                            <div class="suggestion-header">
+                                <h3>${suggestion.title || 'Öneri'}</h3>
+                                <span class="badge badge-success">Öneri</span>
+                            </div>
+                            <p class="suggestion-text">${descriptionText}</p>
+                            <div class="suggestion-details">
+                                <div><strong>Departman:</strong> ${suggestion.department_name || 'Genel'}</div>
+                                <div><strong>Yıllık Tasarruf:</strong> ${parseFloat(suggestion.expected_saving_tl || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} TL</div>
+                                <div><strong>CO₂ Azaltımı:</strong> ${parseFloat(suggestion.expected_saving_co2_kg || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} kg/yıl</div>
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            <% } else { %>
+                container.innerHTML = '<div class="no-data">Öneri bulunamadı</div>';
+            <% } %>
+        }
+
+        // Departman grubunu aç/kapa
+        function toggleDepartmentGroup(index) {
+            const group = document.getElementById(`dept-group-${index}`);
+            const header = document.querySelector(`[data-dept-index="${index}"] .department-group-header`);
+            const icon = header.querySelector('.department-toggle-icon');
+            
+            if (group.classList.contains('collapsed')) {
+                group.classList.remove('collapsed');
+                group.classList.add('expanded');
+                icon.textContent = '▼';
+            } else {
+                group.classList.remove('expanded');
+                group.classList.add('collapsed');
+                icon.textContent = '▶';
+            }
+        }
+        
+        // Global function olarak tanımla
+        window.toggleDepartmentGroup = toggleDepartmentGroup;
+
+        // Sayfa yüklendiğinde render et
+        document.addEventListener('DOMContentLoaded', function() {
+            renderAnomalies();
+            renderSuggestions();
+        });
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Departmanlar - Vestel Karar Destek Sistemi</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-top">
+                <img src="/images/vestel-logo.png" alt="VESTEL" class="vestel-logo" onerror="this.style.display='none'">
+                <h1>Vestel Karar Destek Sistemi</h1>
+            </div>
+            <nav>
+                <a href="/">Dashboard</a>
+                <a href="/departments" class="active">Departmanlar</a>
+                <a href="/what-to-do">Ne Yapılmalı</a>
+                <a href="/anomalies">Anormallikler</a>
+                <a href="/suggestions">Öneriler</a>
+                <a href="/scenarios">Senaryo Analizi</a>
+            </nav>
+        </header>
+
+        <main>
+            <!-- Departmanlar Listesi -->
+            <section class="section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2>📋 Departmanlar</h2>
+                    <button id="addDepartmentBtn" class="btn btn-small btn-green">+ Yeni Departman Ekle</button>
+                </div>
+                <div class="departments-grid">
+                    <% if (departments && departments.length > 0) { %>
+                        <% departments.forEach(dept => { %>
+                            <div class="department-card <%= dept.active === 0 ? 'department-inactive' : '' %>" data-department-id="<%= dept.department_id %>">
+                                <div style="display: flex; justify-content: space-between; align-items: start;">
+                                    <div style="flex: 1;">
+                                        <h3><%= dept.department_name %></h3>
+                                        <p class="dept-status">
+                                            Durum: 
+                                            <span class="<%= dept.active === 1 ? 'status-active' : 'status-inactive' %>">
+                                                <%= dept.active === 1 ? 'Aktif' : 'Pasif' %>
+                                            </span>
+                                        </p>
+                                    </div>
+                                    <div style="display: flex; gap: 5px; margin-left: 10px; flex-direction: column;">
+                                        <div style="display: flex; gap: 5px;">
+                                            <button class="btn-edit-department" data-id="<%= dept.department_id %>" style="background-color: #2563eb; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.85em;">✏️</button>
+                                            <button class="btn-toggle-department" data-id="<%= dept.department_id %>" data-active="<%= dept.active %>" style="background-color: <%= dept.active === 1 ? '#dc143c' : '#059669' %>; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.85em;">
+                                                <%= dept.active === 1 ? '🚫' : '✓' %>
+                                            </button>
+                                        </div>
+                                        <button class="btn-delete-department" data-id="<%= dept.department_id %>" data-name="<%= dept.department_name %>" style="background-color: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.85em; width: 100%;">🗑️ Sil</button>
+                                    </div>
+                                </div>
+                            </div>
+                        <% }); %>
+                    <% } else { %>
+                        <p class="no-data">Departman bulunamadı</p>
+                    <% } %>
+                </div>
+            </section>
+
+            <!-- Departman Bazında Tüketim Verileri -->
+            <section class="section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2>📊 Departman Bazında Aylık Tüketim Verileri</h2>
+                    <button id="addEnergyDataBtn" class="btn btn-small btn-primary">+ Enerji Verisi Ekle</button>
+                </div>
+                <div class="table-container" style="max-height: 600px; overflow-y: auto;">
+                    <table>
+                        <thead style="position: sticky; top: 0; background-color: #dc143c; z-index: 10;">
+                            <tr>
+                                <th>Departman</th>
+                                <th>Ay</th>
+                                <th>Toplam Tüketim (kWh)</th>
+                                <th>Toplam Maliyet (TL)</th>
+                                <th>CO₂ Emisyonu (kg)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (dashboardData && dashboardData.length > 0) { %>
+                                <% 
+                                // Ayları grupla ve sırala
+                                const groupedByMonth = {};
+                                dashboardData.forEach(data => {
+                                    const monthKey = data.month_key;
+                                    if (!groupedByMonth[monthKey]) {
+                                        groupedByMonth[monthKey] = [];
+                                    }
+                                    groupedByMonth[monthKey].push(data);
+                                });
+                                
+                                // Ayları tarih sırasına göre sırala (en yeni en üstte)
+                                const sortedMonths = Object.keys(groupedByMonth).sort().reverse();
+                                %>
+                                <% sortedMonths.forEach(monthKey => { %>
+                                    <% groupedByMonth[monthKey].forEach(data => { %>
+                                        <tr>
+                                            <td><strong><%= data.department_name %></strong></td>
+                                            <td><%= new Date(data.month_key).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long' }) %></td>
+                                            <td><%= parseFloat(data.total_kwh || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></td>
+                                            <td><%= parseFloat(data.total_cost_tl || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></td>
+                                            <td><%= parseFloat(data.total_co2_kg || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></td>
+                                        </tr>
+                                    <% }); %>
+                                <% }); %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="5" class="no-data">Tüketim verisi bulunamadı</td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Departman Ekleme/Düzenleme Modal -->
+    <div id="departmentModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="departmentModalTitle">Yeni Departman Ekle</h3>
+                <span class="modal-close" id="departmentModalClose">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="departmentForm">
+                    <input type="hidden" id="departmentId" name="department_id">
+                    <div class="form-group">
+                        <label for="departmentName">Departman Adı *</label>
+                        <input type="text" id="departmentName" name="department_name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="departmentActive">Durum</label>
+                        <select id="departmentActive" name="active" class="form-control">
+                            <option value="1">Aktif</option>
+                            <option value="0">Pasif</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                        <button type="button" class="btn" id="cancelDepartmentBtn" style="background-color: #666666; color: white;">İptal</button>
+                        <button type="submit" class="btn btn-primary">Kaydet</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enerji Verisi Ekleme Modal -->
+    <div id="energyDataModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Enerji Verisi Ekle</h3>
+                <span class="modal-close" id="energyDataModalClose">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="energyDataForm">
+                    <div class="form-group">
+                        <label for="energyDepartment">Departman *</label>
+                        <select id="energyDepartment" name="department_id" class="form-control" required>
+                            <option value="">Seçiniz</option>
+                            <% if (departments && departments.length > 0) { %>
+                                <% departments.forEach(dept => { %>
+                                    <option value="<%= dept.department_id %>"><%= dept.department_name %></option>
+                                <% }); %>
+                            <% } %>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="energyMonth">Ay *</label>
+                        <input type="month" id="energyMonth" name="month_key" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="energyType">Enerji Türü *</label>
+                        <select id="energyType" name="energy_type_id" class="form-control" required>
+                            <option value="">Seçiniz</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="energyConsumption">Tüketim (kWh) *</label>
+                        <input type="number" id="energyConsumption" name="consumption_kwh" class="form-control" step="0.01" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="energyCost">Maliyet (TL) *</label>
+                        <input type="number" id="energyCost" name="cost_tl" class="form-control" step="0.01" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="energyCO2">CO₂ Emisyonu (kg) *</label>
+                        <input type="number" id="energyCO2" name="co2_kg" class="form-control" step="0.01" min="0" required>
+                    </div>
+                    <div class="form-group" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                        <button type="button" class="btn" id="cancelEnergyDataBtn" style="background-color: #666666; color: white;">İptal</button>
+                        <button type="submit" class="btn btn-primary">Kaydet</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Departman Modal işlemleri
+        const departmentModal = document.getElementById('departmentModal');
+        const departmentForm = document.getElementById('departmentForm');
+        const departmentModalTitle = document.getElementById('departmentModalTitle');
+        const departmentModalClose = document.getElementById('departmentModalClose');
+
+        // Departman ekleme butonu
+        document.getElementById('addDepartmentBtn').addEventListener('click', function() {
+            departmentForm.reset();
+            document.getElementById('departmentId').value = '';
+            departmentModalTitle.textContent = 'Yeni Departman Ekle';
+            departmentModal.style.display = 'block';
+        });
+
+        // Modal kapatma
+        if (departmentModalClose) {
+            departmentModalClose.addEventListener('click', function() {
+                departmentModal.style.display = 'none';
+            });
+        }
+
+        document.getElementById('cancelDepartmentBtn').addEventListener('click', function() {
+            departmentModal.style.display = 'none';
+        });
+
+        window.addEventListener('click', function(event) {
+            if (event.target === departmentModal) {
+                departmentModal.style.display = 'none';
+            }
+        });
+
+        // Departman form submit
+        if (departmentForm) {
+            departmentForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const formData = new FormData(departmentForm);
+                const departmentId = document.getElementById('departmentId').value;
+                const isEdit = departmentId !== '';
+
+                try {
+                    const url = isEdit ? `/api/departments/${departmentId}` : '/api/departments';
+                    const method = isEdit ? 'PUT' : 'POST';
+
+                    const response = await fetch(url, {
+                        method: method,
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            department_name: formData.get('department_name'),
+                            active: parseInt(formData.get('active'))
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        alert(isEdit ? 'Departman başarıyla güncellendi!' : 'Departman başarıyla eklendi!');
+                        departmentModal.style.display = 'none';
+                        location.reload();
+                    } else {
+                        alert('Hata: ' + (result.message || 'Bilinmeyen bir hata oluştu'));
+                    }
+                } catch (error) {
+                    console.error('Hata:', error);
+                    alert('Bir hata oluştu. Lütfen tekrar deneyin.');
+                }
+            });
+        }
+
+        // Departman düzenleme
+        document.querySelectorAll('.btn-edit-department').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const departmentId = this.getAttribute('data-id');
+                try {
+                    const response = await fetch(`/api/departments/${departmentId}`);
+                    const result = await response.json();
+
+                    if (result.success) {
+                        const dept = result.data;
+                        document.getElementById('departmentId').value = dept.department_id;
+                        document.getElementById('departmentName').value = dept.department_name;
+                        document.getElementById('departmentActive').value = dept.active;
+                        departmentModalTitle.textContent = 'Departman Düzenle';
+                        departmentModal.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Hata:', error);
+                    alert('Departman bilgileri yüklenirken hata oluştu.');
+                }
+            });
+        });
+
+        // Departman aktif/pasif yapma
+        document.querySelectorAll('.btn-toggle-department').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const departmentId = this.getAttribute('data-id');
+                const currentActive = parseInt(this.getAttribute('data-active'));
+                const newActive = currentActive === 1 ? 0 : 1;
+
+                if (!confirm(`Departmanı ${newActive === 1 ? 'aktif' : 'pasif'} yapmak istediğinize emin misiniz?`)) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/departments/${departmentId}/toggle-active`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ active: newActive })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        alert(result.message);
+                        location.reload();
+                    } else {
+                        alert('Hata: ' + (result.message || 'Bilinmeyen bir hata oluştu'));
+                    }
+                } catch (error) {
+                    console.error('Hata:', error);
+                    alert('Bir hata oluştu. Lütfen tekrar deneyin.');
+                }
+            });
+        });
+
+        // Departman silme
+        document.querySelectorAll('.btn-delete-department').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const departmentId = this.getAttribute('data-id');
+                const departmentName = this.getAttribute('data-name');
+
+                if (!confirm(`"${departmentName}" departmanını silmek istediğinize emin misiniz? Bu işlem geri alınamaz!`)) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/departments/${departmentId}`, {
+                        method: 'DELETE'
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        alert('Departman başarıyla silindi!');
+                        location.reload();
+                    } else {
+                        alert('Hata: ' + (result.message || 'Bilinmeyen bir hata oluştu'));
+                    }
+                } catch (error) {
+                    console.error('Hata:', error);
+                    alert('Bir hata oluştu. Lütfen tekrar deneyin.');
+                }
+            });
+        });
+
+        // Enerji Verisi Modal işlemleri
+        const energyDataModal = document.getElementById('energyDataModal');
+        const energyDataForm = document.getElementById('energyDataForm');
+        const energyDataModalClose = document.getElementById('energyDataModalClose');
+
+        // Enerji türlerini yükle
+        async function loadEnergyTypes() {
+            try {
+                const response = await fetch('/api/energy-types');
+                const result = await response.json();
+                const select = document.getElementById('energyType');
+                select.innerHTML = '<option value="">Seçiniz</option>';
+                if (result.success && result.data) {
+                    result.data.forEach(et => {
+                        const option = document.createElement('option');
+                        option.value = et.energy_type_id;
+                        option.textContent = et.energy_name;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Enerji türleri yüklenirken hata:', error);
+            }
+        }
+
+        // Enerji verisi ekleme butonu
+        document.getElementById('addEnergyDataBtn').addEventListener('click', function() {
+            loadEnergyTypes();
+            energyDataForm.reset();
+            energyDataModal.style.display = 'block';
+        });
+
+        // Modal kapatma
+        if (energyDataModalClose) {
+            energyDataModalClose.addEventListener('click', function() {
+                energyDataModal.style.display = 'none';
+            });
+        }
+
+        document.getElementById('cancelEnergyDataBtn').addEventListener('click', function() {
+            energyDataModal.style.display = 'none';
+        });
+
+        window.addEventListener('click', function(event) {
+            if (event.target === energyDataModal) {
+                energyDataModal.style.display = 'none';
+            }
+        });
+
+        // Enerji verisi form submit
+        if (energyDataForm) {
+            energyDataForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const formData = new FormData(energyDataForm);
+                const monthKey = formData.get('month_key') + '-01';
+
+                try {
+                    const response = await fetch('/api/energy-monthly', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            department_id: parseInt(formData.get('department_id')),
+                            energy_type_id: parseInt(formData.get('energy_type_id')),
+                            month_key: monthKey,
+                            consumption_kwh: parseFloat(formData.get('consumption_kwh')),
+                            cost_tl: parseFloat(formData.get('cost_tl')),
+                            co2_kg: parseFloat(formData.get('co2_kg'))
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        alert('Enerji verisi başarıyla eklendi!');
+                        energyDataModal.style.display = 'none';
+                        location.reload();
+                    } else {
+                        alert('Hata: ' + (result.message || 'Bilinmeyen bir hata oluştu'));
+                    }
+                } catch (error) {
+                    console.error('Hata:', error);
+                    alert('Bir hata oluştu. Lütfen tekrar deneyin.');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
+

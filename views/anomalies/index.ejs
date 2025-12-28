@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vestel Karar Destek Sistemi</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Vestel Karar Destek Sistemi</h1>
+            <nav>
+                <a href="/">Dashboard</a>
+                <a href="/departments">Departmanlar</a>
+                <a href="/what-to-do">Ne Yapılmalı</a>
+                <a href="/anomalies" class="active">Anormallikler</a>
+                <a href="/suggestions">Öneriler</a>
+                <a href="/scenarios">Senaryo Analizi</a>
+            </nav>
+        </header>
+
+        <main>
+            <!-- Filtreleme -->
+            <section class="section">
+                <h2>Anormallikler</h2>
+                <div class="filter-buttons">
+                    <a href="/anomalies" class="btn <%= currentLevel === 'all' ? 'btn-active' : '' %>">Tümü</a>
+                    <a href="/anomalies?level=high" class="btn btn-danger <%= currentLevel === 'high' ? 'btn-active' : '' %>">Yüksek</a>
+                    <a href="/anomalies?level=medium" class="btn <%= currentLevel === 'medium' ? 'btn-active' : '' %>" style="background-color: #ff6b6b;">Orta</a>
+                    <a href="/anomalies?level=low" class="btn <%= currentLevel === 'low' ? 'btn-active' : '' %>" style="background-color: #ff9999;">Düşük</a>
+                </div>
+            </section>
+
+            <!-- Anormallikler Tablosu -->
+            <section class="section">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Departman</th>
+                                <th>Enerji Türü</th>
+                                <th>Seviye</th>
+                                <th>Neden</th>
+                                <th>Tespit Tarihi</th>
+                                <th>Tüketim (kWh)</th>
+                                <th>Maliyet (TL)</th>
+                                <th>CO₂ (kg)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (anomalies && anomalies.length > 0) { %>
+                                <% anomalies.forEach(anomaly => { %>
+                                    <tr class="anomaly-<%= anomaly.anomaly_level %>">
+                                        <td><strong><%= anomaly.department_name %></strong></td>
+                                        <td><%= anomaly.energy_name %></td>
+                                        <td>
+                                            <span class="badge badge-<%= anomaly.anomaly_level %>">
+                                                <%= anomaly.anomaly_level === 'high' ? 'Yüksek' : (anomaly.anomaly_level === 'medium' ? 'Orta' : 'Düşük') %>
+                                            </span>
+                                        </td>
+                                        <td><%= anomaly.anomaly_reason %></td>
+                                        <td><%= new Date(anomaly.detected_at).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %></td>
+                                        <td><%= parseFloat(anomaly.consumption_kwh || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></td>
+                                        <td><%= parseFloat(anomaly.cost || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></td>
+                                        <td><%= parseFloat(anomaly.co2_kg || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></td>
+                                    </tr>
+                                <% }); %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="8" class="no-data">Anormallik bulunamadı</td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/js/dashboard.js"></script>
+</body>
+</html>
+
