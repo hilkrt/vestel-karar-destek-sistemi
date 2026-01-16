@@ -164,3 +164,9 @@ Projeyi geliştirmek için:
 - Production ortamında `SESSION_SECRET` değerini güvenli bir değerle değiştirin
 - HTTPS kullanıyorsanız `server.js` içindeki session cookie `secure` özelliğini `true` yapın
 
+  ## ER Diyagramı
+Bu projede kullanılan veritabanı yapısı aşağıdaki ER diyagramında gösterilmiştir.
+
+[ER Diyagramını görüntülemek için tıklayın](ERD/vestel%20diyagram.pdf)
+
+
