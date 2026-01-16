@@ -1,4 +1,17 @@
 # Vestel Karar Destek Sistemi
+## Proje Açıklaması
+Bu proje, Vestel benzeri büyük ölçekli bir üretim işletmesi için geliştirilmiş,
+enerji yönetimi odaklı bir karar destek sistemidir. Sistem; departman bazlı
+enerji tüketimlerini analiz eder, anormallikleri tespit eder ve yöneticilere
+karar alma sürecinde destek olacak öneriler sunar.
+
+## Senaryo Tanımı
+Bir üretim işletmesinde departmanlar aylık enerji tüketim verilerini sisteme girer.
+Sistem bu verileri geçmiş dönemlerle karşılaştırarak olağan dışı artışları
+(anormallikleri) tespit eder. Tespit edilen anormalliklere bağlı olarak
+enerji tasarrufu önerileri oluşturulur. Yöneticiler, senaryo analizi modülü ile
+farklı tasarruf senaryolarını karşılaştırabilir ve uygun olanı uygulayabilir.
+
 
 > **💡 Hızlı Başlangıç:** Bilgisayarı kapattıktan sonra projeyi tekrar başlatmak için [BAŞLANGIÇ.md](./BAŞLANGIÇ.md) dosyasına bakın!
 
